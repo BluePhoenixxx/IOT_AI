@@ -4,5 +4,93 @@
 
 {% block content %}
 <h2>Home Page</h2>
-<p>Welcome back, {{ username }}!</p>
+<p>Welcome back, {{ ho_ten }}!</p>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        .container {
+            margin-top: 20px;
+        }
+
+        .function-box {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #f8f9fa;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 150px;
+        }
+
+        .function-box h3 {
+            margin-top: 0;
+        }
+
+        .row {
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <a href="{{ url_for('diem_danh') }}" class="function-box">
+                    <h3>Điểm danh</h3>
+                </a>
+            </div>
+            <div class="col-md-3">
+                <a href="{{ url_for('thong_ke') }}" class="function-box">
+                    <h3>Thống kê</h3>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+
+<style>
+.container {
+    margin-top: 20px;
+}
+
+.function-box {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #f8f9fa;
+}
+
+.function-box h3 {
+    margin-top: 0;
+}
+
+.function-box p {
+    font-size: 14px;
+    color: #555;
+}
+
+.function-box .btn {
+    margin-top: 10px;
+}
+</style>
 {% endblock %}

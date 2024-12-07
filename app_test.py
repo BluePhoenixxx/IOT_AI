@@ -13,8 +13,8 @@ app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 
 # Replace ******* with your database password.
-app.config['MYSQL_PASSWORD'] = '*********' 
-app.config['MYSQL_DB'] = 'loginapp'
+app.config['MYSQL_PASSWORD'] = 'Bian1907@'
+app.config['MYSQL_DB'] = 'quanlydiemdanh'
 
 
 # Initialize MySQL
@@ -87,6 +87,19 @@ def profile():
     if 'loggedin' in session:
         return render_template('auth/profile.html', username=session['username'], title="Profile")
     return redirect(url_for('login'))
+
+@app.route('/diem')
+def profile():
+    if 'loggedin' in session:
+        return render_template('auth/profile.html', username=session['username'], title="Profile")
+    return redirect(url_for('login'))
+
+@app.route('/profile')
+def profile():
+    if 'loggedin' in session:
+        return render_template('auth/profile.html', username=session['username'], title="Profile")
+    return redirect(url_for('login'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

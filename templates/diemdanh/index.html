@@ -1,0 +1,359 @@
+{% extends 'home/layout.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block content %}
+<h2>Attendance page</h2>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+
+
+        #stopVideo {
+            padding: 8px 12px;
+            background-color: #dc3545; /* Màu đỏ */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #stopVideo:hover {
+            background-color: #c82333; /* Đỏ đậm hơn khi hover */
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            color: #333;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .subject-selection {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subject-selection label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .subject-selection select {
+            padding: 5px;
+            font-size: 16px;
+        }
+
+        .subject-selection button {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .subject-selection button:hover {
+            background-color: #0056b3;
+        }
+
+        .attendance-display {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .image-preview, .attendance-list {
+            flex: 1;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-width: 280px;
+        }
+
+        .image-preview h3, .attendance-list h3 {
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+
+        .image-box {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #cameraFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Giữ tỷ lệ và làm đầy khung */
+        }
+
+        #studentList {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #studentList li {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* Cải thiện responsive */
+        @media (max-width: 768px) {
+            .attendance-display {
+                flex-direction: column;
+            }
+
+            .subject-selection {
+                flex-direction: column;
+            }
+        }
+
+    </style>
+</head>
+<body>
+       <div class="container">
+        <header>
+            <h1>Điểm danh học phần</h1>
+        </header>
+        <main>
+            <!-- Phần chọn học phần -->
+             <!-- Phần chọn học phần -->
+            <section class="subject-selection">
+                <label for="subject">Chọn học phần:</label>
+                <select id="subject">
+                    <option value="">Đang tải...</option>
+                </select>
+
+              <label for="camera">Chọn camera:</label>
+                <select id="camera">
+                    <option value="http://192.168.137.111/stream">Camera 1</option>
+                    <option value="http://192.168.137.111/stream">Camera 2</option>
+                </select>
+
+
+                <button id="toggleAttendance">Điểm danh</button>
+
+            </section>
+
+            <!-- Phần hiển thị và danh sách -->
+            <section class="attendance-display">
+                <div class="image-preview">
+                    <h2>Camera điểm danh</h2>
+                    <div class="image-box">
+                        <img id="cameraFeed" src="" alt="Đang tải luồng từ camera..." />
+                    </div>
+                </div>
+
+
+                <div class="attendance-list">
+                    <h2>Danh sách sinh viên đã điểm danh</h2>
+                    <ul id="studentList">
+                        <li>Chưa có sinh viên nào điểm danh</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+    <script>
+    // Lấy danh sách học phần từ API
+async function loadSubjects() {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/subjects');
+        const subjects = await response.json();
+        const subjectSelect = document.getElementById('subject');
+
+        // Xóa các tùy chọn cũ
+        subjectSelect.innerHTML = '';
+
+        // Thêm tùy chọn mới
+        subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name;
+            subjectSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Lỗi tải học phần:', error);
+    }
+}
+
+async function loadStudents(subjectId) {
+    try {
+        const response = await fetch(`http://127.0.0.1:5000/api/students/${subjectId}`);
+        const students = await response.json();
+
+        const studentList = document.getElementById('studentList');
+        studentList.innerHTML = ''; // Xóa danh sách cũ
+
+        if (students.length === 0) {
+            studentList.innerHTML = '<li>Không có sinh viên nào trong học phần này.</li>';
+        } else {
+            students.forEach(student => {
+                const li = document.createElement('li');
+                li.textContent = `${student.id} - ${student.name}`;
+                studentList.appendChild(li);
+            });
+        }
+    } catch (error) {
+        console.error('Lỗi tải danh sách sinh viên:', error);
+        alert('Không thể tải danh sách sinh viên. Vui lòng kiểm tra kết nối.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    let currentStream = null; // Biến lưu trữ luồng video hiện tại
+    const toggleButton = document.getElementById('toggleAttendance');
+
+    // Lấy danh sách học phần từ API
+    async function loadSubjects() {
+        try {
+            const response = await fetch('http://127.0.0.1:5000/api/subjects');
+            const subjects = await response.json();
+            const subjectSelect = document.getElementById('subject');
+
+            // Xóa các tùy chọn cũ
+            subjectSelect.innerHTML = '';
+
+            // Thêm tùy chọn mới
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = subject.name;
+                subjectSelect.appendChild(option);
+            });
+
+        } catch (error) {
+            console.error('Lỗi tải học phần:', error);
+            alert('Không thể tải danh sách học phần. Vui lòng kiểm tra kết nối.');
+        }
+    }
+
+    // Chuyển đổi trạng thái điểm danh
+    toggleButton.addEventListener('click', async function () {
+        const cameraFeed = document.getElementById('cameraFeed');
+        const subject = document.getElementById('subject').value;
+        const subjectId =document.getElementById('subject')
+
+        if (!subject) {
+            alert('Vui lòng chọn học phần!');
+            return;
+        }
+
+        if (toggleButton.textContent === 'Điểm danh') {
+            try {
+
+                // Bật camera
+                {#currentStream = await navigator.mediaDevices.getUserMedia({ video: true });#}
+                {#cameraFeed.srcObject = currentStream;#}
+
+                let cameraURL ="/video_feed";
+                if (!cameraURL) {
+                alert('Vui lòng chọn camera!');
+                return;
+            }
+
+                // Đổi nút thành "Ngừng điểm danh"
+                cameraFeed.src =cameraURL
+                toggleButton.textContent = 'Ngừng điểm danh';
+                toggleButton.classList.remove('btn-primary');
+                toggleButton.classList.add('btn-danger');
+                console.log('Camera đã bật.', cameraURL);
+            } catch (error) {
+                console.error('Lỗi khi mở camera:', error);
+                alert('Lỗi khi mở camera:');
+            }
+        } else {
+            // Tắt camera
+            {#if (currentStream) {#}
+            {#    currentStream.getTracks().forEach(track => track.stop());#}
+            {#    cameraFeed.srcObject = null;#}
+            {#    currentStream = null;#}
+            {#    console.log('Camera đã tắt.');#}
+
+            // Đổi nút thành "Điểm danh"
+            cameraFeed.src = '';
+            toggleButton.textContent = 'Điểm danh';
+            toggleButton.classList.remove('btn-danger');
+            toggleButton.classList.add('btn-primary');
+        }
+    });
+    })
+
+// Gọi hàm loadSubjects khi trang tải xong
+window.onload = loadSubjects;
+
+    </script>
+
+<style>
+.container {
+    margin-top: 20px;
+}
+
+.function-box {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #f8f9fa;
+}
+
+.function-box h3 {
+    margin-top: 0;
+}
+
+.function-box p {
+    font-size: 14px;
+    color: #555;
+}
+
+.function-box .btn {
+    margin-top: 10px;
+}
+</style>
+{% endblock %}
