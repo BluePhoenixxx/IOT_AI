@@ -217,6 +217,10 @@ async function loadSubjects() {
             option.textContent = subject.name;
             subjectSelect.appendChild(option);
         });
+        subjectSelect.addEventListener('change', ()=> {
+            const selectedValue = subjectSelect.value;
+            loadStudents(selectedValue);
+        });
     } catch (error) {
         console.error('Lỗi tải học phần:', error);
     }
@@ -234,10 +238,15 @@ async function loadStudents(subjectId) {
             studentList.innerHTML = '<li>Không có sinh viên nào trong học phần này.</li>';
         } else {
             students.forEach(student => {
-                const li = document.createElement('li');
-                li.textContent = `${student.id} - ${student.name}`;
-                studentList.appendChild(li);
-            });
+                const li = document.createElement('li'); li.style.display = 'flex';
+                // Sử dụng flexbox để căn chỉnh li.style.justifyContent = 'space-between';
+                // Căn giữa các phần tử
+                const studentText = document.createElement('span');
+                studentText.textContent = `${student.ma_sinhvien} - ${student.ten_sinhvien}`;
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = student.ma_sinhvien;
+                li.appendChild(studentText); li.appendChild(checkbox); studentList.appendChild(li); });
         }
     } catch (error) {
         console.error('Lỗi tải danh sách sinh viên:', error);
@@ -249,83 +258,70 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentStream = null; // Biến lưu trữ luồng video hiện tại
     const toggleButton = document.getElementById('toggleAttendance');
 
-    // Lấy danh sách học phần từ API
-    async function loadSubjects() {
-        try {
-            const response = await fetch('http://127.0.0.1:5000/api/subjects');
-            const subjects = await response.json();
-            const subjectSelect = document.getElementById('subject');
-
-            // Xóa các tùy chọn cũ
-            subjectSelect.innerHTML = '';
-
-            // Thêm tùy chọn mới
-            subjects.forEach(subject => {
-                const option = document.createElement('option');
-                option.value = subject.id;
-                option.textContent = subject.name;
-                subjectSelect.appendChild(option);
-            });
-
-        } catch (error) {
-            console.error('Lỗi tải học phần:', error);
-            alert('Không thể tải danh sách học phần. Vui lòng kiểm tra kết nối.');
-        }
-    }
-
     // Chuyển đổi trạng thái điểm danh
     toggleButton.addEventListener('click', async function () {
         const cameraFeed = document.getElementById('cameraFeed');
         const subject = document.getElementById('subject').value;
-        const subjectId =document.getElementById('subject')
+        const subjectId =document.getElementById('subject')[subject-1].textContent
 
         if (!subject) {
             alert('Vui lòng chọn học phần!');
             return;
         }
 
+        const timestamp = new Date().toISOString();
+        const localTime = new Date().toLocaleString();
         if (toggleButton.textContent === 'Điểm danh') {
-            try {
+            // Hiển thị hộp thoại xác nhận trước khi bắt đầu điểm danh
+            if (confirm(`Bạn có chắc chắn muốn bắt đầu điểm danh cho môn học "${subjectId}" vào lúc ${localTime}?`)) {
+                try {
+                    // Bật camera
 
-                // Bật camera
-                {#currentStream = await navigator.mediaDevices.getUserMedia({ video: true });#}
-                {#cameraFeed.srcObject = currentStream;#}
+                    let cameraURL ="/video_feed";
+                    if (!cameraURL) {
+                    alert('Vui lòng chọn camera!');
+                    return;
+                }
 
-                let cameraURL ="/video_feed";
-                if (!cameraURL) {
-                alert('Vui lòng chọn camera!');
-                return;
-            }
+                    {#const response = await fetch('/start_attendance', {#}
+                    {#    method: 'POST',#}
+                    {#    headers: {#}
+                    {#        'Content-Type': 'application/json',#}
+                    {#    },#}
+                    {#    body: JSON.stringify({ subject: subject, cameraURL: cameraURL, timestamp: timestamp }),#}
 
-                // Đổi nút thành "Ngừng điểm danh"
-                cameraFeed.src =cameraURL
-                toggleButton.textContent = 'Ngừng điểm danh';
-                toggleButton.classList.remove('btn-primary');
-                toggleButton.classList.add('btn-danger');
-                console.log('Camera đã bật.', cameraURL);
-            } catch (error) {
-                console.error('Lỗi khi mở camera:', error);
-                alert('Lỗi khi mở camera:');
+                    {#if (!response.ok) { throw new Error('Lỗi khi bắt đầu điểm danh'); }#}
+
+                    // Đổi nút thành "Ngừng điểm danh"
+                    cameraFeed.src =cameraURL;
+                    toggleButton.textContent = 'Ngừng điểm danh';
+                    toggleButton.classList.remove('btn-primary');
+                    toggleButton.classList.add('btn-danger');
+                    console.log('Camera đã bật.', cameraURL);
+                } catch (error) {
+                    console.error('Lỗi khi mở camera:', error);
+                    alert('Lỗi khi mở camera:');
+                }
             }
         } else {
-            // Tắt camera
-            {#if (currentStream) {#}
-            {#    currentStream.getTracks().forEach(track => track.stop());#}
-            {#    cameraFeed.srcObject = null;#}
-            {#    currentStream = null;#}
-            {#    console.log('Camera đã tắt.');#}
+            // Hiển thị hộp thoại xác nhận trước khi ngừng điểm danh
+            if (confirm(`Bạn có chắc chắn muốn ngừng điểm danh cho môn học "${subjectId}"`)) {
+                // Tắt camera
+                cameraFeed.src = '';
+                toggleButton.textContent = 'Điểm danh';
+                toggleButton.classList.remove('btn-danger');
+                toggleButton.classList.add('btn-primary');
 
-            // Đổi nút thành "Điểm danh"
-            cameraFeed.src = '';
-            toggleButton.textContent = 'Điểm danh';
-            toggleButton.classList.remove('btn-danger');
-            toggleButton.classList.add('btn-primary');
+                // Gửi yêu cầu dừng điểm danh
+
+            }
         }
     });
-    })
+});
 
 // Gọi hàm loadSubjects khi trang tải xong
 window.onload = loadSubjects;
+
 
     </script>
 
