@@ -4,7 +4,7 @@ import MySQLdb.cursors
 import re
 import requests
 import dateutil.parser
-
+from flask_socketio import SocketIO, emit
 import tensorflow as tf
 import facenet
 
@@ -28,7 +28,7 @@ app.config['MYSQL_DB'] = 'bug0usy6grg9homkxqes'
 
 # Intialize MySQL
 mysql1 = MySQL(app)
-
+socketio = SocketIO(app)
 current_subject = None
 last_id = None
 time = None
@@ -113,12 +113,19 @@ def home():
     return redirect(url_for('login'))
 
 
+def initialize_attendance():
+    global list_attendented  # Khai báo biến toàn cục
+    list_attendented = []  # Set lại list_attended về danh sách rỗng
+
+
+
 # API lấy danh sách học phần
 @app.route('/api/subjects', methods=['GET'])
 def get_subjects():
     try:
         cursor = mysql1.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("SELECT id, name FROM subjects")
+        query = "SELECT * FROM subjects where  lecturer_id = %s"
+        cursor.execute(query, (session['id'],))
         subjects = cursor.fetchall()
         return jsonify(subjects)
     except Exception as e:
@@ -139,7 +146,7 @@ def diem_danh():
     # Check if user is loggedin
     if 'loggedin' in session:
         # User is loggedin show them the home page
-        return render_template('diemdanh/index.html', email=session['email'],title="Profile")
+        return render_template('diemdanh/index.html', email=session['email'],title="Điểm Danh")
     # User is not loggedin redirect to login page
     return redirect(url_for('login'))
 
@@ -150,22 +157,24 @@ def thong_ke():
     # Check if user is loggedin
     if 'loggedin' in session:
         # User is loggedin show them the home page
-        return render_template('auth/profile.html', email=session['email'],title="Profile")
+        return render_template('thongke/index.html', email=session['email'],title="Thống Kê")
     # User is not loggedin redirect to login page
     return redirect(url_for('login'))
 
 
-camera_url = "192.168.137.198/stream"
+camera_url = "http://192.168.137.214/stream"
 
 @app.route('/video_feed')
 def video_feed():
     global list_student
     global list_attendented
-    camera = cv2.VideoCapture(camera_url)
+    camera = cv2.VideoCapture(0)
     # print(current_subject)
+    list_attendented = []
     def generate_frames():
         while True:
             # print(last_id)
+
             success, frame = camera.read()
             if not success:
                 break
@@ -181,6 +190,90 @@ def video_feed():
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+
+
+@app.route('/tick/<student_id>', methods=['GET'])
+def tick_checkbox(student_id):
+    # Khi hàm được gọi, gửi thông báo đến front-end
+    socketio.emit('tick_checkbox', {'student_id': student_id})
+    return f"Checkbox for student {student_id} will be ticked."
+
+
+def send_tick_event(student_id, tick_state=True):
+    if not student_id:
+        raise ValueError("student_id is required")
+    # Gửi sự kiện qua WebSocket
+    socketio.emit('update_checkbox', {'student_id': student_id, 'tick_state': tick_state})
+    return {'success': True, 'message': f'Checkbox {student_id} set to {tick_state}'}
+
+
+
+@app.route('/api/attendance/<int:subject_id>', methods=['GET'])
+def get_attendance(subject_id):
+    cursor = mysql1.connection.cursor(MySQLdb.cursors.DictCursor)
+    try:
+        # Lấy danh sách buổi học của môn học
+        cursor.execute("""
+            SELECT idbuoi_hoc, Thoi_gian
+            FROM tiet_hoc
+            WHERE Ma_mon_hoc = %s
+        """, (subject_id,))
+        sessions = cursor.fetchall()
+
+        if not sessions:
+            return jsonify({"students": [], "sessions": []})
+
+        # Lấy danh sách sinh viên của môn học
+        query = """
+                SELECT sv.MSSV AS ma_sinhvien, sv.ten_sinh_vien AS ten_sinhvien, sv.lop
+                FROM sinhvien_hocphan shp
+                JOIN sinh_vien sv ON shp.ma_sinh_vien = sv.MSSV
+                WHERE shp.ma_hoc_phan = %s
+                """
+        cursor.execute(query, (subject_id,))  # Truyền subject_id vào truy vấn
+        students = cursor.fetchall()
+
+        # Lấy trạng thái điểm danh
+        cursor.execute("""
+            SELECT dd.ma_buoi_hoc, dd.ma_sinh_vien
+            FROM diem_danh dd
+            JOIN tiet_hoc th ON dd.ma_buoi_hoc = th.idbuoi_hoc
+            WHERE th.Ma_mon_hoc = %s
+        """, (subject_id,))
+        diem_danh = cursor.fetchall()
+
+        print(diem_danh)
+        # Tạo cấu trúc điểm danh cho sinh viên
+        attendance = {}
+        for record in diem_danh:
+            if record['ma_sinh_vien'] not in attendance:
+                attendance[record['ma_sinh_vien']] = {}
+            attendance[record['ma_sinh_vien']][record['ma_buoi_hoc']] = True
+
+        # Kết hợp dữ liệu sinh viên và buổi học với trạng thái điểm danh
+        for student in students:
+            student['attendance'] = [
+                attendance.get(student['ma_sinhvien'], {}).get(session['idbuoi_hoc'], False)
+                for session in sessions
+            ]
+
+        print(students)
+        print(sessions)
+        # Trả về dữ liệu dưới dạng JSON
+        return jsonify({
+            "students": students,
+            "sessions": [{"idbuoi_hoc": s['idbuoi_hoc'], "Thoi_gian": s['Thoi_gian'].isoformat()} for s in sessions]
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cursor.close()
+
+
+
+
 
 
 # Tải model Facenet (dạng TensorFlow)
@@ -237,6 +330,8 @@ def process_frame(frame):
         name = class_names[np.argmax(prediction)]
         unknown = "unknown"
         confidence = np.max(prediction)
+        print(list_attendented)
+        print(ma_sinhvien_list)
         if  confidence > 0.85 :
         # Vẽ khung và hiển thị danh tính
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
@@ -247,9 +342,12 @@ def process_frame(frame):
                 else:
                     list_attendented.append(name)
                     print(last_id, name)
+                    send_tick_event(name, True)
                     attendent_sv(last_id,name)
+                    response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=1")
+                    response1 = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=0")
 
-        # response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=1")
+                    # response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=1")
         else:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
             cv2.putText(frame, f"{unknown}  ({confidence:.2f})", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
@@ -322,6 +420,10 @@ def start_attendance():
     # Lưu trữ giá trị subject và cameraURL vào các biến toàn cục
     current_subject = subject
     current_camera_url = cameraURL
+
+    initialize_attendance()
+
+    print(current_subject)
     # Lưu thông tin điểm danh vào cơ sở dữ liệu
     # insert_attendance_to_db(subject, timestamp, 'start')
     attendent(current_subject, timestamp)
@@ -347,8 +449,8 @@ def attendent(current_subject, timestamp):
             thoi_gian = datetime.now()
             cursor.execute(query, (thoi_gian, current_subject))
             mysql1.connection.commit()  # Lưu thay đổi vào cơ sở dữ liệu
-            print("Dữ liệu đã được chèn thành công.")
             last_id = cursor.lastrowid
+            print("Dữ liệu đã được chèn thành công. attendent " )
         except Exception as e:
             print(f"Lỗi khi chèn dữ liệu: {e}")
         finally:
@@ -378,7 +480,8 @@ def attendent_sv(ma_buoi_hoc, ma_sinh_vien):
             thoi_gian = datetime.now()
             cursor1.execute(query, (ma_buoi_hoc, ma_sinh_vien, thoi_gian))
             mysql1.connection.commit()  # Lưu thay đổi vào cơ sở dữ liệu
-            print("Dữ liệu đã được chèn thành công.")
+            print("Dữ liệu đã được chèn thành công . attendent_sv")
+
         except Exception as e:
             print(f"Lỗi khi chèn dữ liệu: {e}")
         finally:

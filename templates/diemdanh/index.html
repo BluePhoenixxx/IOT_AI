@@ -149,10 +149,13 @@
     </style>
 </head>
 <body>
+<a href="/" id="backButton" class="btn btn-secondary">Trở về trang chủ</a>
+
        <div class="container">
         <header>
             <h1>Điểm danh học phần</h1>
         </header>
+
         <main>
             <!-- Phần chọn học phần -->
              <!-- Phần chọn học phần -->
@@ -196,10 +199,24 @@
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </body>
 </html>
 
     <script>
+     const socket = io.connect('http://127.0.0.1:5000');
+
+    // Lắng nghe sự kiện 'update_checkbox' từ server Flask
+    socket.on('update_checkbox', function (data) {
+        const studentId = data.student_id;
+        const tickState = data.tick_state;
+
+        // Tìm checkbox theo studentId và cập nhật trạng thái
+        const studentCheckbox = document.querySelector(`input[value="${studentId}"]`);
+        if (studentCheckbox) {
+            studentCheckbox.checked = tickState; // Cập nhật trạng thái checkbox
+        }
+    });
     // Lấy danh sách học phần từ API
 async function loadSubjects() {
     try {
@@ -237,16 +254,28 @@ async function loadStudents(subjectId) {
         if (students.length === 0) {
             studentList.innerHTML = '<li>Không có sinh viên nào trong học phần này.</li>';
         } else {
-            students.forEach(student => {
-                const li = document.createElement('li'); li.style.display = 'flex';
-                // Sử dụng flexbox để căn chỉnh li.style.justifyContent = 'space-between';
-                // Căn giữa các phần tử
-                const studentText = document.createElement('span');
-                studentText.textContent = `${student.ma_sinhvien} - ${student.ten_sinhvien}`;
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.value = student.ma_sinhvien;
-                li.appendChild(studentText); li.appendChild(checkbox); studentList.appendChild(li); });
+           students.forEach(student => {
+    const li = document.createElement('li');
+    li.style.display = 'flex';
+    li.style.justifyContent = 'space-between'; // Căn giữa các phần tử theo chiều ngang
+
+    const studentText = document.createElement('span');
+    studentText.textContent = `${student.ma_sinhvien} - ${student.ten_sinhvien}`;
+
+    const checkboxContainer = document.createElement('div'); // Thêm div chứa checkbox
+    checkboxContainer.style.marginLeft = 'auto'; // Đẩy checkbox về phía phải
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = student.ma_sinhvien;
+
+    checkboxContainer.appendChild(checkbox);
+    li.appendChild(studentText);
+    li.appendChild(checkboxContainer); // Thêm div chứa checkbox vào li
+
+    studentList.appendChild(li);
+});
+
         }
     } catch (error) {
         console.error('Lỗi tải danh sách sinh viên:', error);
@@ -283,14 +312,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
-                    {#const response = await fetch('/start_attendance', {#}
-                    {#    method: 'POST',#}
-                    {#    headers: {#}
-                    {#        'Content-Type': 'application/json',#}
-                    {#    },#}
-                    {#    body: JSON.stringify({ subject: subject, cameraURL: cameraURL, timestamp: timestamp }),#}
-
-                    {#if (!response.ok) { throw new Error('Lỗi khi bắt đầu điểm danh'); }#}
+                    const response = await fetch('/start_attendance', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ subject: subject, cameraURL: cameraURL, timestamp: timestamp }),
+                    });
+                    if (!response.ok) { throw new Error('Lỗi khi bắt đầu điểm danh'); }
 
                     // Đổi nút thành "Ngừng điểm danh"
                     cameraFeed.src =cameraURL;

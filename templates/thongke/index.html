@@ -1,0 +1,350 @@
+{% extends 'home/layout.html' %}
+
+{% block title %} {{ title }} {% endblock %}
+
+{% block content %}
+<h2>Statistics page</h2>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+
+
+        #stopVideo {
+            padding: 8px 12px;
+            background-color: #dc3545; /* Màu đỏ */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #stopVideo:hover {
+            background-color: #c82333; /* Đỏ đậm hơn khi hover */
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            color: #333;
+        }
+
+        main {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .subject-selection {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subject-selection label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .subject-selection select {
+            padding: 5px;
+            font-size: 16px;
+        }
+
+        .subject-selection button {
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .subject-selection button:hover {
+            background-color: #0056b3;
+        }
+
+        .attendance-display {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .image-preview, .attendance-list {
+            flex: 1;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-width: 280px;
+        }
+
+        .image-preview h3, .attendance-list h3 {
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+
+        .image-box {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #cameraFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Giữ tỷ lệ và làm đầy khung */
+        }
+
+        #studentList {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #studentList li {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* Cải thiện responsive */
+        @media (max-width: 768px) {
+            .attendance-display {
+                flex-direction: column;
+            }
+
+            .subject-selection {
+                flex-direction: column;
+            }
+        }
+        /* Bao quanh bảng với thanh cuộn ngang khi cần */
+.attendance-table-wrapper {
+    overflow-x: auto; /* Tạo thanh cuộn ngang */
+    max-width: 100%; /* Giới hạn chiều rộng của bảng */
+    margin-top: 20px;
+    border: 1px solid #ddd; /* Viền xung quanh bảng */
+    padding: 10px;
+}
+
+#attendanceTable {
+    width: 100%; /* Đảm bảo bảng chiếm 100% chiều rộng container */
+    border-collapse: collapse; /* Giảm khoảng cách giữa các ô trong bảng */
+}
+
+#attendanceTable th, #attendanceTable td {
+    padding: 8px 12px; /* Khoảng cách trong các ô */
+    text-align: center; /* Canh giữa nội dung */
+    border: 1px solid #ddd; /* Viền cho các ô */
+}
+
+/* Điều chỉnh cho các màn hình nhỏ hơn */
+@media (max-width: 768px) {
+    .attendance-table-wrapper {
+        margin-top: 15px;
+        padding: 0;
+    }
+
+    #attendanceTable {
+        font-size: 12px; /* Giảm font-size cho bảng trên màn hình nhỏ */
+    }
+
+    #attendanceTable th, #attendanceTable td {
+        padding: 6px 8px; /* Giảm padding cho bảng trên màn hình nhỏ */
+    }
+}
+
+
+    </style>
+</head>
+<body>
+<a href="/" id="backButton" class="btn btn-secondary">Trở về trang chủ</a>
+
+       <div class="container">
+        <header>
+            <h1>Thống kê học phần </h1>
+        </header>
+
+        <main>
+            <!-- Phần chọn học phần -->
+             <!-- Phần chọn học phần -->
+            <section class="subject-selection">
+                <label for="subject">Chọn học phần:</label>
+                <select id="subject">
+                    <option value="">Đang tải...</option>
+                </select>
+            </section>
+        </main>
+           <div class="attendance-table-wrapper">
+    <h3>Danh sách điểm danh</h3>
+    <table id="attendanceTable" class="table table-bordered">
+
+    </table>
+</div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</body>
+</html>
+
+    <script>
+
+async function loadSubjects() {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/subjects');
+        const subjects = await response.json();
+        const subjectSelect = document.getElementById('subject');
+
+        // Xóa các tùy chọn cũ
+        subjectSelect.innerHTML = '';
+
+        // Thêm tùy chọn mới
+        subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.id;
+            option.textContent = subject.name;
+            subjectSelect.appendChild(option);
+        });
+        subjectSelect.addEventListener('change', ()=> {
+            const selectedValue = subjectSelect.value;
+            loadAttendance(selectedValue);
+        });
+    } catch (error) {
+        console.error('Lỗi tải học phần:', error);
+    }
+}
+
+async function loadAttendance(subjectId) {
+    try {
+        const response = await fetch(`/api/attendance/${subjectId}`);
+        const data = await response.json();
+        const students = data.students;
+        const sessions = data.sessions;
+        const table = document.getElementById('attendanceTable');
+        table.innerHTML = ''; // Xóa nội dung bảng trước khi tạo lại
+
+        // Tạo tiêu đề cho bảng (cột đầu tiên là sinh viên, các cột tiếp theo là buổi học)
+        const headerRow = document.createElement('tr');
+        const studentHeader = document.createElement('th');
+        studentHeader.textContent = 'Sinh viên';
+        headerRow.appendChild(studentHeader);
+
+        // Thêm các buổi học vào tiêu đề
+        sessions.forEach(session => {
+            const th = document.createElement('th');
+            th.textContent = new Date(session.Thoi_gian).toLocaleString(); // Hiển thị thời gian buổi học
+            headerRow.appendChild(th);
+        });
+        table.appendChild(headerRow);
+
+        // Tạo các hàng dữ liệu (sinh viên và trạng thái điểm danh cho từng buổi học)
+        students.forEach(student => {
+            const row = document.createElement('tr');
+            // Cột sinh viên
+            const studentCell = document.createElement('td');
+            studentCell.textContent = student.ten_sinhvien;
+            row.appendChild(studentCell);
+
+
+            // Trạng thái điểm danh cho từng buổi học
+            sessions.forEach((session,index)=> {
+
+                console.log(student.attendance[indexơ])
+                const cell = document.createElement('td');
+                cell.textContent = student.attendance[index] ? '✔' : ''; // Hiển thị dấu tích nếu có điểm danh
+                row.appendChild(cell);
+            });
+            table.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Lỗi tải dữ liệu điểm danh:', error);
+        alert('Không thể tải dữ liệu điểm danh.');
+    }
+}
+
+
+
+// Gọi hàm loadSubjects khi trang tải xong
+window.onload = loadSubjects;
+
+
+    </script>
+
+<style>
+.container {
+    margin-top: 20px;
+}
+
+.attendance-table-wrapper {
+    overflow-x: auto; /* Tạo thanh cuộn ngang */
+    max-width: 100%; /* Giới hạn chiều rộng bảng */
+    margin-top: 20px;
+    border: 1px solid #ddd; /* Giới hạn bảng với viền */
+}
+
+#attendanceTable {
+    width: 100%; /* Đảm bảo bảng chiếm 100% chiều rộng container */
+    border-collapse: collapse; /* Đảm bảo các ô không bị rời nhau */
+}
+
+#attendanceTable th, #attendanceTable td {
+    padding: 8px; /* Padding cho các ô trong bảng */
+    text-align: center;
+    border: 1px solid #ddd; /* Viền cho các ô trong bảng */
+}
+
+
+.function-box {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background-color: #f8f9fa;
+}
+
+.function-box h3 {
+    margin-top: 0;
+}
+
+.function-box p {
+    font-size: 14px;
+    color: #555;
+}
+
+.function-box .btn {
+    margin-top: 10px;
+}
+</style>
+{% endblock %}
