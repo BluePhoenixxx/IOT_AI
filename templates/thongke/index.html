@@ -12,6 +12,7 @@
     <meta charset="UTF-8">
     <title>Home Page</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+
     <style>
 
 
@@ -215,17 +216,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
 </body>
 </html>
 
     <script>
-
+let students = [];
+let sessions = [];
+let subject
 async function loadSubjects() {
     try {
         const response = await fetch('http://127.0.0.1:5000/api/subjects');
         const subjects = await response.json();
         const subjectSelect = document.getElementById('subject');
-
+        console.log(subjectSelect)
         // Xóa các tùy chọn cũ
         subjectSelect.innerHTML = '';
 
@@ -249,15 +254,15 @@ async function loadAttendance(subjectId) {
     try {
         const response = await fetch(`/api/attendance/${subjectId}`);
         const data = await response.json();
-        const students = data.students;
-        const sessions = data.sessions;
+        students = data.students;
+        sessions = data.sessions;
         const table = document.getElementById('attendanceTable');
         table.innerHTML = ''; // Xóa nội dung bảng trước khi tạo lại
 
         // Tạo tiêu đề cho bảng (cột đầu tiên là sinh viên, các cột tiếp theo là buổi học)
         const headerRow = document.createElement('tr');
         const studentHeader = document.createElement('th');
-        studentHeader.textContent = 'Sinh viên';
+        studentHeader.textContent = 'Thời Gian / Sinh viên ';
         headerRow.appendChild(studentHeader);
 
         // Thêm các buổi học vào tiêu đề
@@ -273,14 +278,14 @@ async function loadAttendance(subjectId) {
             const row = document.createElement('tr');
             // Cột sinh viên
             const studentCell = document.createElement('td');
-            studentCell.textContent = student.ten_sinhvien;
+            studentCell.textContent = student.ma_sinhvien+ "-" +  student.ten_sinhvien;
             row.appendChild(studentCell);
 
 
             // Trạng thái điểm danh cho từng buổi học
             sessions.forEach((session,index)=> {
 
-                console.log(student.attendance[indexơ])
+                console.log(student.attendance[index])
                 const cell = document.createElement('td');
                 cell.textContent = student.attendance[index] ? '✔' : ''; // Hiển thị dấu tích nếu có điểm danh
                 row.appendChild(cell);
@@ -292,7 +297,47 @@ async function loadAttendance(subjectId) {
         alert('Không thể tải dữ liệu điểm danh.');
     }
 }
+// Giả sử bạn đã có dữ liệu từ API
 
+// Export to Excel function
+function exportToExcel() {
+    if (!students.length || !sessions.length) {
+        alert('No data available for export.');
+        return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const ws_data = [];
+    {#ws_data.push("Hoc phần " )#}
+    // Add headers
+    const header = ['Thời Gian / Sinh viên'];
+    sessions.forEach(session => {
+        header.push(new Date(session.Thoi_gian).toLocaleString());
+    });
+    ws_data.push(header);
+
+    // Add student data
+    students.forEach(student => {
+        const row = [student.ten_sinhvien];
+        sessions.forEach((_, index) => {
+            row.push(student.attendance[index] ? 'x' : '');
+        });
+        ws_data.push(row);
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+
+    // Automatically download the file
+    XLSX.writeFile(workbook, 'Attendance.xlsx');
+}
+
+// Add export button to the attendance table wrapper
+const exportButton = document.createElement('button');
+exportButton.textContent = 'Xuất ra Excel';
+exportButton.classList.add('btn', 'btn-success', 'mt-3');
+exportButton.addEventListener('click', exportToExcel);
+document.querySelector('.attendance-table-wrapper').appendChild(exportButton);
 
 
 // Gọi hàm loadSubjects khi trang tải xong

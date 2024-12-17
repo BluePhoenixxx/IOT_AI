@@ -7,8 +7,9 @@ import dateutil.parser
 from flask_socketio import SocketIO, emit
 import tensorflow as tf
 import facenet
-
+import bcrypt
 import pickle
+import time
 import align.detect_face
 import numpy as np
 import cv2
@@ -35,22 +36,22 @@ time = None
 ma_sinhvien_list = None
 list_attendented = []
 # http://localhost:5000/pythonlogin/ - this will be the login page, we need to use both GET and POST requests
-@app.route('/pythonlogin/', methods=['GET', 'POST'])
+@app.route('/login/', methods=['GET', 'POST'])
 def login():
-# Output message if something goes wrong...
+    # Output message if something goes wrong...
     # Check if "username" and "password" POST requests exist (user submitted form)
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         # Create variables for easy access
         username = request.form['username']
-        password = request.form['password']
+        password = request.form['password'].encode('utf-8')
         # Check if account exists using MySQL
         cursor = mysql1.connection.cursor(MySQLdb.cursors.DictCursor)
         print(username, password)
-        cursor.execute('SELECT * FROM giang_vien WHERE email = %s AND mat_khau = %s', (username, password))
+        cursor.execute('SELECT * FROM giang_vien WHERE email = %s', (username,))
         # Fetch one record and return result
         account = cursor.fetchone()
-                # If account exists in accounts table in out database
-        if account:
+        # If account exists in accounts table in out database
+        if account and bcrypt.checkpw(password, account['mat_khau'].encode('utf-8')):
             # Create session data, we can access this data in other routes
             session['loggedin'] = True
             session['id'] = account['id']
@@ -58,9 +59,9 @@ def login():
             # Redirect to home page
             return redirect(url_for('home'))
         else:
-            # Account doesnt exist or username/password incorrect
+            # Account doesn't exist or username/password incorrect
             flash("Incorrect username/password!", "danger")
-    return render_template('auth/login.html',title="Login")
+    return render_template('auth/login.html', title="Login")
 
 
 # http://localhost:5000/pythonlogin/register 
@@ -162,13 +163,13 @@ def thong_ke():
     return redirect(url_for('login'))
 
 
-camera_url = "http://192.168.137.214/stream"
+camera_url = "http://192.168.137.199/stream"
 
 @app.route('/video_feed')
 def video_feed():
     global list_student
     global list_attendented
-    camera = cv2.VideoCapture(0)
+    camera = cv2.VideoCapture(camera_url)
     # print(current_subject)
     list_attendented = []
     def generate_frames():
@@ -290,6 +291,8 @@ def load_facenet_model(model_path):
 
 FACENET_MODEL_PATH = 'Models/20180402-114759.pb'
 CLASSIFIER_PATH = 'Models/facemodel.pkl'
+
+
 facenet_graph = load_facenet_model(FACENET_MODEL_PATH)
 facenet_session = tf.compat.v1.Session(graph=facenet_graph)
 
@@ -320,7 +323,7 @@ def process_frame(frame):
 
     for (x, y, w, h) in faces:
         face = frame[y:y+h, x:x+w]
-        resized_face = cv2.resize(face, (160, 160))
+        resized_face = cv2.resize(face, (140, 140))
 
         # Tính vector nhúng
         embedding = get_face_embedding(resized_face, facenet_graph, facenet_session)
@@ -330,12 +333,11 @@ def process_frame(frame):
         name = class_names[np.argmax(prediction)]
         unknown = "unknown"
         confidence = np.max(prediction)
-        print(list_attendented)
-        print(ma_sinhvien_list)
-        if  confidence > 0.85 :
+
+        if  (confidence > 0.85 and name in ma_sinhvien_list):
         # Vẽ khung và hiển thị danh tính
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(frame, f"{name} ({confidence:.2f})", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+            cv2.putText(frame, f"{name} ({confidence:.2f})", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 2)
             if (name in ma_sinhvien_list ):
                 if (name in list_attendented):
                     pass
@@ -345,13 +347,16 @@ def process_frame(frame):
                     send_tick_event(name, True)
                     attendent_sv(last_id,name)
                     response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=1")
-                    response1 = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=0")
+                    # time.sleep(1)
 
-                    # response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=1")
+                    # response = requests.get(
+                    #     "https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=0")
+
+                    response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=1")
         else:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-            cv2.putText(frame, f"{unknown}  ({confidence:.2f})", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-            # response = requests.get("https://blynk.cloud/external/api/update?token=UiJZFmSeUTSkmS0vtK99MgagMJ2vg51A&V2=0")
+            cv2.putText(frame, f"{unknown}  ({confidence:.2f})", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 2)
+
     return frame
 
 
